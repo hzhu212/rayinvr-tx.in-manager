@@ -15,6 +15,13 @@ class TxMerger(ttk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
         self.logger = self._get_logger()
+        self.init_variables()
+        # self.set_custom_style()
+        self.create_widgets()
+        self.load_all_txins()
+        self.tx_merger = TxMergerCore()
+
+    def init_variables(self):
         self.search_path = tk.StringVar()
         self.filter_str = tk.StringVar()
         self.ray_number = tk.IntVar()
@@ -23,113 +30,118 @@ class TxMerger(ttk.Frame):
         self.search_path.set(os.path.join(ROOT_DIR, 'tx_in'))
         self.enable_ray_number.set(1)
         self.save_path.set(os.path.join(self.search_path.get(), 'undefined_tx.in'))
-        self.create_widgets()
-        self.load_all_txins()
-        self.tx_merger = TxMergerCore()
+
+    def set_custom_style(self):
+        s = ttk.Style()
+        s.configure('.', font=('Microsoft YaHei UI', 10))
+        s.configure('sm.TButton', font=('Microsoft YaHei UI', 8), width=7)
 
     def create_widgets(self):
+        PADX_LG = (15, 15)
+        PADY_SM, PADY_LG, PADY_LLG = (5, 0), (10, 0), (20, 0)
+        PADY_SM_E, PADY_LG_E, PADY_LLG_E = (5, 5), (10, 10), (20, 20)
+
         # make frame resizable
-        self.rowconfigure(0, weight=3)
-        self.rowconfigure(1, weight=1)
+        self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
 
         # frame for selecting tx.in(s)
         row1 = ttk.LabelFrame(self, text='Select tx.in(s) for merging')
-        row1.grid(column=0, ipadx=5, ipady=5, pady=10, sticky=tk.N+tk.S+tk.W+tk.E)
         IROW_PATH, IROW_FILTER, IROW_LABEL, IROW_BOX = 0, 1, 2, 3
         row1.columnconfigure(0, weight=1)
         row1.columnconfigure(2, weight=1)
         row1.rowconfigure(IROW_BOX, weight=1)
+        row1.grid(column=0, padx=PADX_LG, pady=PADY_LG, sticky='nswe')
 
         # set search path
         path_area = ttk.Frame(row1)
-        path_area.grid(row=IROW_PATH, column=0, columnspan=3, sticky=tk.W+tk.E)
+        path_area.grid(row=IROW_PATH, column=0, columnspan=3, pady=PADY_SM, sticky='nswe')
         path_area.columnconfigure(1, weight=1)
-        ttk.Label(path_area, text='Search tx.in(s) from: ').grid(row=0, column=0, sticky=tk.W)
-        ttk.Entry(path_area, textvariable=self.search_path).grid(row=0, column=1, sticky=tk.W+tk.E)
+        ttk.Label(path_area, text='Search tx.in(s) from: ').grid(row=0, column=0, sticky='nsw')
+        ttk.Entry(path_area, textvariable=self.search_path).grid(row=0, column=1, sticky='nswe')
         ttk.Button(path_area, text='Change', command=self.change_search_path)\
-            .grid(row=0, column=2, padx=5, sticky=tk.E)
+            .grid(row=0, column=2, padx=5, sticky='nse')
 
         # filter
         filter_area = ttk.Frame(row1)
-        filter_area.grid(row=IROW_FILTER, column=0, pady=5, sticky=tk.W+tk.E)
+        filter_area.grid(row=IROW_FILTER, column=0, pady=PADY_SM, sticky='nswe')
         filter_area.columnconfigure(1, weight=1)
-        ttk.Label(filter_area, text='Filter: ').grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(filter_area, text='Filter: ').grid(row=0, column=0, sticky='nsw')
         self.combo_filter = ttk.Combobox(filter_area, width=10, values=tuple(), textvariable=self.filter_str)
-        self.combo_filter.grid(row=0, column=1, sticky=tk.W+tk.E)
+        self.combo_filter.grid(row=0, column=1, sticky='nswe')
         self.combo_filter.bind('<KeyPress-Return>', self.filter_txin)
         ttk.Button(filter_area, text='OK', width=5, command=self.filter_txin)\
-            .grid(row=0, column=2, padx=5, sticky=tk.W)
+            .grid(row=0, column=2, sticky='nsw')
 
         # left listbox: tx.in(s) for selecting
         ttk.Label(row1, text='All tx.in(s) available: ')\
-            .grid(row=IROW_LABEL, column=0, sticky=tk.W)
+            .grid(row=IROW_LABEL, column=0, pady=PADY_SM ,sticky='nsw')
         left_part = ttk.Frame(row1)
         left_part.rowconfigure(0, weight=1)
         left_part.columnconfigure(0, weight=1)
-        left_part.grid(row=IROW_BOX, column=0, sticky=tk.N+tk.S+tk.W+tk.E)
-        self.left_box = tk.Listbox(left_part, height=12, selectmode=tk.EXTENDED)
+        left_part.grid(row=IROW_BOX, column=0, pady=PADY_SM_E, sticky='nswe')
+        self.left_box = tk.Listbox(left_part, selectmode=tk.EXTENDED)
         y_scroll1 = tk.Scrollbar(left_part, orient=tk.VERTICAL, command=self.left_box.yview)
-        y_scroll1.grid(row=0, column=1, sticky=tk.N+tk.S)
+        y_scroll1.grid(row=0, column=1, sticky='ns')
         self.left_box['yscrollcommand'] = y_scroll1.set
-        self.left_box.grid(row=0, column=0, sticky=tk.N+tk.S+tk.W+tk.E)
+        self.left_box.grid(row=0, column=0, sticky='nswe')
 
         # right listbox: selected tx.in(s)
         ttk.Label(row1, text='Selected tx.in(s): ')\
-            .grid(row=IROW_LABEL, column=2, sticky=tk.W)
+            .grid(row=IROW_LABEL, column=2, pady=PADY_SM ,sticky='nsw')
         right_part = ttk.Frame(row1)
         right_part.rowconfigure(0, weight=1)
         right_part.columnconfigure(0, weight=1)
-        right_part.grid(row=IROW_BOX, column=2, sticky=tk.N+tk.S+tk.W+tk.E)
-        self.right_box = tk.Listbox(right_part, height=12, selectmode=tk.EXTENDED)
+        right_part.grid(row=IROW_BOX, column=2, pady=PADY_SM_E, sticky='nswe')
+        self.right_box = tk.Listbox(right_part, selectmode=tk.EXTENDED)
         y_scroll2 = tk.Scrollbar(right_part, orient=tk.VERTICAL, command=self.right_box.yview)
-        y_scroll2.grid(row=0, column=1, sticky=tk.N+tk.S)
+        y_scroll2.grid(row=0, column=1, sticky='ns')
         self.right_box['yscrollcommand'] = y_scroll2.set
-        self.right_box.grid(row=0, column=0, sticky=tk.N+tk.S+tk.W+tk.E)
+        self.right_box.grid(row=0, column=0, sticky='nswe')
 
         #select button between left and right listbox
         mid_part = ttk.Frame(row1)
         mid_part.rowconfigure(0, weight=1)
         mid_part.rowconfigure(1, weight=1)
-        mid_part.grid(row=IROW_BOX, column=1, padx=10, sticky=tk.N+tk.S)
-        ttk.Button(mid_part, text='Add >>', command=self.add_txins).grid(pady=5, sticky=tk.S)
-        ttk.Button(mid_part, text='Drop <<', command=self.rm_txins).grid(pady=5, sticky=tk.N)
+        mid_part.grid(row=IROW_BOX, column=1, padx=10, pady=PADY_SM_E, sticky='ns')
+        ttk.Button(mid_part, text='Add >>', command=self.add_txins).grid(pady=8, sticky=tk.S)
+        ttk.Button(mid_part, text='Drop <<', command=self.rm_txins).grid(pady=8, sticky=tk.N)
 
         # frame for merging selected tx.in(s)
         row2 = ttk.LabelFrame(self, text='Merge selected tx.in(s)')
-        row2.grid(column=0, ipadx=5, ipady=5, pady=10, sticky=tk.W+tk.E)
         row2.columnconfigure(0, weight=1)
+        row2.grid(column=0, padx=PADX_LG, pady=PADY_LG, sticky='nswe')
 
         # set target ray-group number
         row2_1 = ttk.Frame(row2)
-        row2_1.grid(column=0, pady=5, sticky=tk.N+tk.W+tk.E)
+        row2_1.grid(column=0, pady=PADY_SM, sticky='nswe')
         row2_1.columnconfigure(1, weight=1)
         ttk.Checkbutton(
             row2_1, text='Reset ray-group number. Will keep the original ray-group number defined in source tx.in(s) if disabled.',
             variable=self.enable_ray_number, command=self.toggle_ray_number,
-            ).grid(row=0, column=0, columnspan=2, sticky=tk.W)
+            ).grid(row=0, column=0, columnspan=2, sticky='nsw')
         self.ray_number_label = ttk.Label(row2_1, text='    Target ray-group number: ')
-        self.ray_number_label.grid(row=1, column=0, sticky=tk.W)
-        self.ray_number_box = tk.Spinbox(row2_1, from_=1, to=1e3, increment=1, width=4, textvariable=self.ray_number)
-        self.ray_number_box.grid(row=1, column=1, sticky=tk.W)
+        self.ray_number_label.grid(row=1, column=0, sticky='nsw')
+        self.ray_number_box = tk.Spinbox(row2_1, state='readonly', from_=1, to=1e3, increment=1, width=4, textvariable=self.ray_number)
+        self.ray_number_box.grid(row=1, column=1, sticky='nsw')
 
         # set path for target tx.in file
         row2_2 = ttk.Frame(row2)
-        row2_2.grid(column=0, pady=5, sticky=tk.N+tk.W+tk.E)
+        row2_2.grid(column=0, pady=PADY_SM_E, sticky='nswe')
         row2_2.columnconfigure(1, weight=1)
-        ttk.Label(row2_2, text='Save to: ').grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(row2_2, text='Save to: ').grid(row=0, column=0, sticky='nsw')
         entry = ttk.Entry(row2_2, textvariable=self.save_path)
-        entry.grid(row=0, column=1, sticky=tk.W+tk.E)
+        entry.grid(row=0, column=1, sticky='nswe')
         entry.bind('<KeyPress-Return>', lambda event: self.handle_apply())
         ttk.Button(row2_2, text='Select', command=self.select_save_path)\
-            .grid(row=0, column=2, sticky=tk.E)
+            .grid(row=0, column=2, sticky='nse')
 
         # command buttons
-        row3 = ttk.Frame(self)
-        row3.grid(column=0, pady=20, sticky=tk.N+tk.S+tk.W+tk.E)
-        row3.columnconfigure(0, weight=1)
-        row3.rowconfigure(0, weight=1)
-        ttk.Button(row3, text='OK', command=self.handle_ok).grid(row=0, column=0)
+        row_cmd = ttk.Frame(self)
+        row_cmd.rowconfigure(0, weight=1)
+        row_cmd.columnconfigure(0, weight=1)
+        row_cmd.grid(column=0, padx=PADX_LG, pady=PADY_LLG_E, sticky='nswe')
+        ttk.Button(row_cmd, text='OK', command=self.handle_ok).grid(row=0, column=0)
 
 
     def _get_logger(self):
@@ -225,7 +237,7 @@ class TxMerger(ttk.Frame):
             return
         src_paths = [os.path.join(ROOT_DIR, 'tx_in', s) for s in self.right_box.get(0, self.right_box.size())]
         ray_number = self.ray_number.get() if self.enable_ray_number.get() else None
-        self.tx_merger.merge(src_paths, dest_path, ray_number)
+        self.tx_merger.run(src_paths, dest_path, ray_number)
 
     def handle_ok(self):
         if self.right_box.size() == 0:
@@ -254,7 +266,7 @@ class TxMergerCore(object):
     def __init__(self):
         super().__init__()
 
-    def merge(self, src_paths, target_path, ray_number=None):
+    def run(self, src_paths, target_path, ray_number=None):
         with open(target_path, 'w') as fw:
             for file in src_paths:
                 string = ''
@@ -287,6 +299,7 @@ class TxMergerCore(object):
 if __name__ == '__main__':
     root = tk.Tk()
     root.title('tx.in merger')
+    root.geometry('700x700+200+30')
 
     # make window resizable
     root.rowconfigure(0, weight=1)
@@ -295,6 +308,6 @@ if __name__ == '__main__':
     # create app
     app = TxMerger(master=root)
     root.report_callback_exception = app.report_callback_exception
-    app.grid(padx=20, pady=10, sticky=tk.N+tk.S+tk.E+tk.W)
+    app.grid(padx=0, sticky='nswe')
 
     app.mainloop()
