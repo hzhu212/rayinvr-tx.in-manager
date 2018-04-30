@@ -69,7 +69,7 @@ class TxMerger(ttk.Frame):
         ttk.Label(filter_area, text='Filter: ').grid(row=0, column=0, sticky='nsw')
         self.combo_filter = ttk.Combobox(filter_area, width=10, values=tuple(), textvariable=self.filter_str)
         self.combo_filter.grid(row=0, column=1, sticky='nswe')
-        self.combo_filter.bind('<KeyPress-Return>', self.filter_txin)
+        self.combo_filter.bind('<Return>', self.filter_txin)
         ttk.Button(filter_area, text='OK', width=5, command=self.filter_txin)\
             .grid(row=0, column=2, sticky='nsw')
 
@@ -117,7 +117,7 @@ class TxMerger(ttk.Frame):
         row2_1.grid(column=0, pady=PADY_SM, sticky='nswe')
         row2_1.columnconfigure(1, weight=1)
         ttk.Checkbutton(
-            row2_1, text='Reset ray-group number. Will keep the original ray-group number defined in source tx.in(s) if disabled.',
+            row2_1, text='Reset ray-group number. If disabled, will keep the original ray-group number defined in source tx.in(s).',
             variable=self.enable_ray_number, command=self.toggle_ray_number,
             ).grid(row=0, column=0, columnspan=2, sticky='nsw')
         self.ray_number_label = ttk.Label(row2_1, text='    Target ray-group number: ')
@@ -132,7 +132,7 @@ class TxMerger(ttk.Frame):
         ttk.Label(row2_2, text='Save to: ').grid(row=0, column=0, sticky='nsw')
         entry = ttk.Entry(row2_2, textvariable=self.save_path)
         entry.grid(row=0, column=1, sticky='nswe')
-        entry.bind('<KeyPress-Return>', lambda event: self.handle_apply())
+        entry.bind('<Return>', self.handle_ok)
         ttk.Button(row2_2, text='Select', command=self.select_save_path)\
             .grid(row=0, column=2, sticky='nse')
 
@@ -239,7 +239,7 @@ class TxMerger(ttk.Frame):
         ray_number = self.ray_number.get() if self.enable_ray_number.get() else None
         self.tx_merger.run(src_paths, dest_path, ray_number)
 
-    def handle_ok(self):
+    def handle_ok(self, event=None):
         if self.right_box.size() == 0:
             messagebox.showerror('Error', 'You hasn\'t select any tx.in(s)')
             return
