@@ -69,8 +69,9 @@ class TxMaker(ttk.Frame):
         horizon_selector.grid(row=0, column=0, pady=PADY_SM, sticky='nswe')
         ttk.Label(horizon_selector, text='Horizon file (.csv): ')\
             .grid(row=0, column=0, sticky='nsw')
-        ttk.Entry(horizon_selector, textvariable=self.horizon_path)\
-            .grid(row=0, column=1, sticky='nswe')
+        entry = ttk.Entry(horizon_selector, textvariable=self.horizon_path)
+        entry.grid(row=0, column=1, sticky='nswe')
+        entry.bind('<Return>', self.horizon_file_changed)
         ttk.Button(horizon_selector, text='Select', command=self.select_horizon_path)\
             .grid(row=0, column=2, sticky='nse')
 
@@ -90,7 +91,7 @@ class TxMaker(ttk.Frame):
         # Set horizon time precision
         prec_setter = ttk.Frame(row_horizon)
         prec_setter.grid(row=3, column=0, pady=PADY_LG_E, sticky='nswe')
-        ttk.Label(prec_setter, text='Time Precision for horizon: ')\
+        ttk.Label(prec_setter, text='Time Precision for horizon(0.03 for OBS and 0.02 for SCS in general): ')\
             .grid(row=0, column=0, sticky='nsw')
         tk.Spinbox(
             prec_setter, state='readonly', from_=0, to=0.1, increment=0.005, width=6,
@@ -192,20 +193,24 @@ class TxMaker(ttk.Frame):
         p = p.strip()
         if not p:
             return
+        self.horizon_path.set(os.path.normpath(p))
+        self.horizon_file_changed()
+
+    def horizon_file_changed(self, event=None):
+        new_path = self.horizon_path.get()
         # enable open-horizon-file button
         self.btn_open_horizon_file.config(state=tk.NORMAL)
         # show horizon preview
-        self.horizon_path.set(os.path.normpath(p))
         text = self._get_horizon_content()
         self.horizon_text.config(state=tk.NORMAL)
         self.horizon_text.delete('1.0', tk.END)
         self.horizon_text.insert(tk.END, text)
         self.horizon_text.config(state=tk.DISABLED)
-        # set default value for horizon precision
-        precision = 0.03 if 'obs' in p else 0.02
-        self.horizon_precision.set(precision)
+        # # set default value for horizon precision
+        # precision = 0.03 if 'obs' in new_path else 0.02
+        # self.horizon_precision.set(precision)
         # set default value for save path
-        horizon_name = os.path.splitext(os.path.split(p)[1])[0]
+        horizon_name = os.path.splitext(os.path.split(new_path)[1])[0]
         sp = os.path.join(os.path.split(self.save_path.get())[0], horizon_name+'_tx.in')
         self.save_path.set(sp)
 
@@ -235,6 +240,9 @@ class TxMaker(ttk.Frame):
 
     def _get_horizon_content(self):
         file_path = self.horizon_path.get()
+        if not os.path.isfile(file_path):
+            messagebox.showerror('Error', 'File not exists: \n%s'%(file_path))
+            return ''
         with open(file_path, 'r') as f:
             lines = list(islice(f, self.NLINE_PREVIEW))
             return ''.join(lines)
