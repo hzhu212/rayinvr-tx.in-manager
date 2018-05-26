@@ -356,6 +356,9 @@ class TxMakerCore(object):
 
 
 if __name__ == '__main__':
+    from ctypes import windll
+    windll.shcore.SetProcessDpiAwareness(1)
+
     root = tk.Tk()
     root.title('tx.in maker')
     root.geometry('700x700+200+30')
