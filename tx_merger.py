@@ -7,7 +7,7 @@ from tkinter import filedialog
 from tkinter import messagebox
 import traceback
 
-from . import ROOT_DIR
+from __init__ import ROOT_DIR
 
 
 class TxMerger(ttk.Frame):
