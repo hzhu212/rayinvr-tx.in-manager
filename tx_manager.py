@@ -5,9 +5,9 @@ from tkinter import ttk
 from tkinter import messagebox
 import traceback
 
-from . import ROOT_DIR
-from .tx_maker import TxMaker
-from .tx_merger import TxMerger
+from __init__ import ROOT_DIR
+from tx_maker import TxMaker
+from tx_merger import TxMerger
 
 
 class TxManager(ttk.Frame):
