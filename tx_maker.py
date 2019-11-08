@@ -9,18 +9,20 @@ from tkinter import filedialog
 from tkinter import messagebox
 import traceback
 
-from __init__ import ROOT_DIR
 from util.custom_widgets import TextLineNumbers, CustomText
+
+
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+SURVEY_DIR = os.path.join(ROOT_DIR, 'trace_number_vs_x')
+SURVEY_NAMES = os.listdir(SURVEY_DIR)
+TIME_OFFSETS = [0] * len(SURVEY_NAMES)
+NLINE_PREVIEW = 100
+# SURVEY_NAMES = ('obs33a', 'obs34a', 'obs31', 'obs30', 'scs_line4a', 'scs_line1a')
+# TIME_OFFSETS = (0.0220, 0.0290, 0.0365, 0.1537, -0.0348, 0)
 
 
 class TxMaker(ttk.Frame):
     """tx.in maker"""
-
-    SURVEY_NAMES = ('obs33a', 'obs34a', 'obs31', 'obs30', 'scs_line4a', 'scs_line1a')
-    TIME_OFFSETS = (0.0220, 0.0290, 0.0365, 0.1537, -0.0348, 0)
-    NLINE_PREVIEW = 100
-    SURVEY_DIR = 'trace_number_vs_x'
-
     def __init__(self, master=None):
         super().__init__(master)
         self.logger = self._get_logger()
@@ -33,12 +35,11 @@ class TxMaker(ttk.Frame):
         self.horizon_path = tk.StringVar()
         self.horizon_preview_msg = tk.StringVar()
         self.horizon_precision = tk.DoubleVar()
-        self.survey_time_offset = tk.DoubleVar()
         self.survey_preview_msg = tk.StringVar()
         self.ray_number = tk.IntVar()
         self.save_path = tk.StringVar()
         self.horizon_preview_msg.set(
-            'The heading %d lines of selected horizon file. (Format as "Line,Trace,Time"): ' %(self.NLINE_PREVIEW))
+            'The heading %d lines of selected horizon file. (Format as "Line,Trace,Time"): ' %(NLINE_PREVIEW))
         self.horizon_precision.set(0.02)
         self.survey_preview_msg.set('The Trace-Number vs. X-Offset Table for selected survey: ')
         self.ray_number.set(1)
@@ -105,15 +106,15 @@ class TxMaker(ttk.Frame):
         row_survey.grid(column=0, padx=PADX_LG, pady=PADY_LG, sticky='nswe')
         survey_selector = ttk.Frame(row_survey)
         survey_selector.grid(row=0, column=0, pady=PADY_SM, sticky='nswe')
-        ttk.Label(survey_selector, text='Select Survey Name: ')\
+        ttk.Label(survey_selector, text='Select Survey Meta File: ')\
             .grid(row=0, column=0, sticky='nsw')
-        cbox = ttk.Combobox(survey_selector, width=12, state='readonly', values=self.SURVEY_NAMES)
+        cbox = ttk.Combobox(survey_selector, width=12, state='readonly', values=SURVEY_NAMES)
         cbox.grid(row=0, column=1, sticky='nsw')
         cbox.bind('<<ComboboxSelected>>', self.survey_changed)
-        ttk.Label(survey_selector, text='Time offset for selected survey (second): ')\
-            .grid(row=0, column=2, padx=(10, 0), sticky='nsw')
-        ttk.Entry(survey_selector, state='readonly', width=10, textvariable=self.survey_time_offset)\
-            .grid(row=0, column=3, sticky='nsw')
+        # ttk.Label(survey_selector, text='Time offset for selected survey (second): ')\
+        #     .grid(row=0, column=2, padx=(10, 0), sticky='nsw')
+        # ttk.Entry(survey_selector, state='readonly', width=10, textvariable=self.survey_time_offset)\
+        #     .grid(row=0, column=3, sticky='nsw')
 
         # Preview survey file
         ttk.Label(row_survey, textvariable=self.survey_preview_msg)\
@@ -231,7 +232,6 @@ class TxMaker(ttk.Frame):
 
     def survey_changed(self, event):
         self.survey_idx = event.widget.current()
-        self.survey_time_offset.set(self.TIME_OFFSETS[self.survey_idx])
         text = self._get_survey_content()
         self.survey_text.config(state=tk.NORMAL)
         self.survey_text.delete('1.0', tk.END)
@@ -244,32 +244,32 @@ class TxMaker(ttk.Frame):
             messagebox.showerror('Error', 'File not exists: \n%s'%(file_path))
             return ''
         with open(file_path, 'r') as f:
-            lines = list(islice(f, self.NLINE_PREVIEW))
+            lines = list(islice(f, NLINE_PREVIEW))
             return ''.join(lines)
 
     def _get_survey_file_path(self):
-        survey_name = self.SURVEY_NAMES[self.survey_idx]
-        survey_path = os.path.join(ROOT_DIR, self.SURVEY_DIR, survey_name+'.txt')
+        survey_name = SURVEY_NAMES[self.survey_idx]
+        survey_path = os.path.join(SURVEY_DIR, survey_name)
         return survey_path
 
     def _get_survey_content(self):
         """Survey info: trace-number vs. x-offset table"""
-        survey_name = self.SURVEY_NAMES[self.survey_idx]
+        survey_name = SURVEY_NAMES[self.survey_idx]
         survey_path = self._get_survey_file_path()
         if not os.path.isfile(survey_path):
             messagebox.showerror(
                 'Error', 'No Trace-Number vs. X-Offset table for survey "%s".\nPlease create one '
-                'at "%s"' %(survey_name, os.path.join('.', self.SURVEY_DIR, survey_name+'.txt')))
+                'at "%s"' %(survey_name, os.path.join(SURVEY_DIR, survey_name)))
             return ''
         with open(survey_path, 'r') as f:
             return f.read()
 
     def handle_ok(self):
-        survey_name = self.SURVEY_NAMES[self.survey_idx]
-        survey_type = SurveyType.OBS if 'obs' in survey_name else SurveyType.SCS
+        survey_name = SURVEY_NAMES[self.survey_idx]
+        survey_type = SurveyType.OBS if 'obs' in survey_name.lower() else SurveyType.SCS
         survey_path = self._get_survey_file_path()
         tx_maker = TxMakerCore(
-            survey_type, survey_path, self.survey_time_offset.get(),
+            survey_type, survey_path,
             self.horizon_path.get(), self.horizon_precision.get(),
             self.ray_number.get(), self.save_path.get(),)
         tx_maker.run()
@@ -295,11 +295,10 @@ class TxMakerCore(object):
     LINE_FMT = '%10.3f%10.3f%10.3f%10d'
 
     def __init__(
-            self, survey_type, survey_path, survey_time_offset, horizon_path,
+            self, survey_type, survey_path, horizon_path,
             horizon_precision, ray_number, save_path):
         self.survey_type = survey_type
         self.survey_path = survey_path
-        self.survey_time_offset = survey_time_offset
         self.horizon_path = horizon_path
         self.horizon_precision = horizon_precision
         self.ray_number = ray_number
@@ -307,23 +306,38 @@ class TxMakerCore(object):
 
     def load_survey_data(self):
         with open(self.survey_path, 'r') as f:
-            shot_site = f.readline().strip()
+            # the first line contains meta info.
+            # meta line format: <shot_loc>,<time_offset>
+            meta_line = f.readline().strip()
             trace_number_map = np.genfromtxt(f, delimiter=',')
         if not np.all(np.diff(trace_number_map, axis=0) > 0):
             raise ValueError(
                 'Invalid Trace-Number vs. X-Offset Table: [%s].'
                 'Rows should in order of increasing.' %(self.survey_path))
-        return shot_site, trace_number_map
+        meta = self._parse_shot_meta(meta_line)
+        return meta, trace_number_map
+
+    def _parse_shot_meta(self, meta_line):
+        """meta line format: <shot_loc>,<time_offset>"""
+        meta_names = ['shot_loc', 'time_offset']
+        meta_values = [float(s.strip()) for s in meta_line.strip().split(',')]
+        if len(meta_names) != len(meta_values):
+            raise ValueError(
+                'Meta line(the first line) of file "{}" format error. Should contain '
+                'the following fields delimited by comma: [{}]'
+                .format(self.survey_path, ', '.join(meta_names)))
+        meta = dict(zip(meta_names, meta_values))
+        return meta
 
     def load_horizon_data(self):
         return np.genfromtxt(self.horizon_path, delimiter=',', usecols=(1, 2))
 
-    def make_tx_for_obs(self, tx_data, shot_site):
-        idx = np.searchsorted(tx_data[:, 0], shot_site)
+    def make_tx_for_obs(self, tx_data, shot_loc):
+        idx = np.searchsorted(tx_data[:, 0], shot_loc)
         res = np.vstack([
-            [shot_site, -1, 0, 0],
+            [shot_loc, -1, 0, 0],
             tx_data[:idx, :],
-            [shot_site, 1, 0, 0],
+            [shot_loc, 1, 0, 0],
             tx_data[idx:, :],
             [0, 0, 0, -1],
             ])
@@ -333,22 +347,21 @@ class TxMakerCore(object):
         fmt = self.LINE_FMT+'\n'
         with open(self.save_path, 'w') as f:
             for row in tx_data:
-                shot_site = row[0]
-                f.write(fmt %(shot_site, 1, 0, 0))
+                shot_loc = row[0]
+                f.write(fmt %(shot_loc, 1, 0, 0))
                 f.write(fmt %tuple(row))
             f.write(fmt %(0, 0, 0, -1))
 
     def run(self):
-        shot_site, trace_number_map = self.load_survey_data()
+        meta, trace_number_map = self.load_survey_data()
         horizon_data = self.load_horizon_data()
         trace_number = horizon_data[:, 0:1]
         x = np.interp(trace_number, trace_number_map[:, 0], trace_number_map[:, 1])
-        time = horizon_data[:, 1:2] + self.survey_time_offset
+        time = horizon_data[:, 1:2] + meta['time_offset']
         tx_data = np.hstack([x, time, np.ones_like(x)*self.horizon_precision, np.ones_like(x)*self.ray_number])
         obs, scs = SurveyType.OBS, SurveyType.SCS
         if self.survey_type in (obs, obs.name, obs.value, obs.name.lower()):
-            shot_site = float(shot_site)
-            self.make_tx_for_obs(tx_data, shot_site)
+            self.make_tx_for_obs(tx_data, meta['shot_loc'])
         elif self.survey_type in (scs, scs.name, scs.value, scs.name.lower()):
             self.make_tx_for_scs(tx_data)
         else:
