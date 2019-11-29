@@ -167,7 +167,7 @@ class TxMerger(ttk.Frame):
 
     def _get_all_txins(self):
         search_path = self.search_path.get()
-        return [s for s in os.listdir(search_path) if s.endswith('tx.in')]
+        return [s for s in os.listdir(search_path) if 'tx' in s and s.endswith('.in')]
 
     def load_all_txins(self):
         self.left_box.delete(0, self.left_box.size())
@@ -216,7 +216,7 @@ class TxMerger(ttk.Frame):
         p = filedialog.asksaveasfilename(
             defaultextension='.in',
             filetypes=[('rayinvr tx.in files', '.in'), ('any type', '.*')],
-            initialdir=os.path.join(ROOT_DIR, 'tx_in'),
+            initialdir=os.path.dirname(self.save_path.get()),
             initialfile='untitled_tx.in',
             parent=self,
             title='Save As')
@@ -235,7 +235,7 @@ class TxMerger(ttk.Frame):
                 parent=self)
         if not ok:
             return
-        src_paths = [os.path.join(ROOT_DIR, 'tx_in', s) for s in self.right_box.get(0, self.right_box.size())]
+        src_paths = [os.path.join(self.search_path.get(), s) for s in self.right_box.get(0, self.right_box.size())]
         ray_number = self.ray_number.get() if self.enable_ray_number.get() else None
         self.tx_merger.run(src_paths, dest_path, ray_number)
 
